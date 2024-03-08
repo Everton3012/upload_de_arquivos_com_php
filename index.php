@@ -1,35 +1,78 @@
 <?php 
 
-    if(isset($_FILES['arquivo'])){
-        $arquivo = $_FILES['arquivo'];
+include("conexao.php");
 
-        if ($arquivo['error']) {
-            die('Falha ao enviar arquivo');
+if(isset($_GET['deletar'])){
+
+    $id = intval($_GET['deletar']);
+    $sql_query = $mysqli->query("SELECT * FROM arquivos WHERE id = '$id'") or die($mysqli->error);
+    $arquivo = $sql_query->fetch_assoc();
+
+    if (unlink($arquivo['path'])) {
+        $deu_certo = $mysqli->query("DELETE FROM arquivos WHERE id = '$id'") or die($mysqli->error);
+        if($deu_certo){
+            echo "<p>arquivo exluido com sucesso</p>";
+        }   
+    }
+
+    
+
+}
+
+function enviarArquivo($error, $size, $name, $tmp_name){
+
+    include("conexao.php");
+
+    if ($error) {
+        die('Falha ao enviar arquivo');
+    }
+
+    if ( $size > 2097152 ) {
+        die('Arquivo muito grande!! Max: 2MB');
+    }
+    $pasta = "arquivos/";
+    $nomeDoArquivo = $name;
+    $novoNomeDoArquivo = uniqid();
+    $extensao = strtolower(pathinfo($nomeDoArquivo, PATHINFO_EXTENSION));
+
+    if($extensao != 'jpg' && $extensao != 'png'){
+        die("Tipo de arquivo nao aceito");
+    }
+
+    $path = $pasta . $novoNomeDoArquivo . "." .$extensao;
+
+    $deu_certo = move_uploaded_file($tmp_name, $path);
+    if($deu_certo)
+        {
+        $mysqli->query("INSERT INTO arquivos (nome, path) VALUES('$nomeDoArquivo', '$path')") or die($mysqli->error);
+        return true;
         }
+        else
+        {
+        return false;
+    }
+}
 
-        if ($arquivo['size'] > 2097152 ) {
-            die('Arquivo muito grande!! Max: 2MB');
+
+
+    if(isset($_FILES['arquivos'])){
+        $arquivos = $_FILES['arquivos'];
+        $tudo_certo = true;
+        foreach($arquivos['name'] as $index => $arq) {
+            $deu_certo = enviarArquivo($arquivos['error'][$index],$arquivos['size'][$index],$arquivos['name'][$index],$arquivos['tmp_name'][$index]);
+            if (!$deu_certo) {
+                $tudo_certo = false;
+            }
         }
-        $pasta = "arquivos/";
-        $nomeDoArquivo = $arquivo['name'];
-        $novoNomeDoArquivo = uniqid();
-        $extensao = strtolower(pathinfo($nomeDoArquivo, PATHINFO_EXTENSION));
-
-        if($extensao != 'jpg' && $extensao != 'png'){
-            die("Tipo de arquivo nao aceito");
-        }
-
-        $deu_certo = move_uploaded_file($arquivo["tmp_name"], $pasta . $novoNomeDoArquivo . "." .$extensao);
-        if($deu_certo)
-           { echo "<p>arquivo enviado com sucesso! Para acessá-lo,  <a target=\"blank\"  href=\"arquivos/$novoNomeDoArquivo.$extensao\">clique aqui:</a></p>";
-           }
-           else
-           {
-            echo "<p>Falha ao enviar arquivo</p>";
+        if ($tudo_certo) {
+            echo "<p>todos os arquivos enviados com sucesso</p>";
+        } else {
+            echo "<p>falha ao enviar um ou mais arquivos</p>";
         }
         }
+       
 
-
+$sql_query = $mysqli->query("SELECT * FROM arquivos") or die($mysqli->error);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -41,8 +84,31 @@
 <body>
     <form enctype="multipart/form-data" method="post" action="">
         <p><label for="">Selecione o arquivo</label>
-        <input name="arquivo" type="file"></p>
+        <input multiple name="arquivos[]" type="file"></p>
         <input type="submit" value="Enviar">
     </form>
+    <table border="1" cellpadding="10">
+        <thead>
+            <th>Preview</th>
+            <th>Arquivo</th>
+            <th>Data de Envio</th>
+            <th></th>
+        </thead>
+        <h1>Lista de arquivos</h1>
+        <tbody>
+            <?php 
+            while($arquivo = $sql_query->fetch_assoc()){
+            ?>
+            <tr>
+                <td><img height="50" src="<?php echo $arquivo['path']; ?>" alt=""></td>
+                <td> <a target="_blank" href="<?php echo $arquivo['path']; ?>"><?php echo $arquivo['nome']; ?></a></td>
+                <td><?php echo date("d/m/Y H:i", strtotime($arquivo['data_upload'])) ?></td>
+                <td><a href="index.php?deletar=<?php echo $arquivo['id']; ?>">Deletar</a></td>
+            </tr>
+            <?php 
+            }
+            ?>
+        </tbody>
+    </table>
 </body>
 </html>

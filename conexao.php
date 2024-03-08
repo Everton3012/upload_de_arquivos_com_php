@@ -1,7 +1,7 @@
 <?php 
 
 $host = "localhost";
-$db = "arquivos";
+$db = "upload";
 $user = "root";
 $pass = "";
 
@@ -9,5 +9,6 @@ $mysqli = new mysqli($host, $user, $pass, $db);
 
 
 if($mysqli->connect_errno) {
-    die("Falha na conexão com o banco de dados");
+    echo "Connect failed: " ; $mysqli->connect_error;
+    exit();
 };
